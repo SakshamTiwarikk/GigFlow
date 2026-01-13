@@ -15,34 +15,69 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// Socket setup
+/* =====================
+   CORS CONFIG
+===================== */
+
+const allowedOrigins = [
+  "https://gig-flow-mu.vercel.app",
+  "http://localhost:5173",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true); // Postman / curl
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS not allowed"));
+      }
+    },
+    credentials: true,
+  })
+);
+
+app.use(express.json());
+app.use(cookieParser());
+
+/* =====================
+   SOCKET.IO
+===================== */
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL,
-    credentials: true
-  }
+    origin: allowedOrigins,
+    credentials: true,
+  },
 });
 
 app.set("io", io);
 
-// Middlewares
-app.use(express.json());
-app.use(cookieParser());
-app.use(cors({
-  origin: process.env.CLIENT_URL,
-  credentials: true
-}));
+/* =====================
+   ROUTES
+===================== */
 
-// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/gigs", gigRoutes);
 app.use("/api/bids", bidRoutes);
 
-// DB connection
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.error(err));
+/* =====================
+   DATABASE
+===================== */
 
-server.listen(5000, () => {
-  console.log("Server running on port 5000");
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB Connected"))
+  .catch((err) => console.error("MongoDB Error:", err));
+
+/* =====================
+   SERVER START
+===================== */
+
+const PORT = process.env.PORT || 5000;
+
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
